@@ -260,7 +260,7 @@ def plot(contours=None, colors=None, vectors=None, vectors_values=None, x=None,
          show_points=None, components=None, slice_color='black',
          plot_colorbar=True, label_size=12, ra_range=None, dec_range=None,
          fig=None, axes=None, contour_linewidth=0.5, vector_color="black",
-         n_discrete_colors=None):
+         n_discrete_colors=None, color_range=None):
     """
     Plot image(s).
 
@@ -471,7 +471,8 @@ def plot(contours=None, colors=None, vectors=None, vectors_values=None, x=None,
             cmap = cm.get_cmap(cmap, int(n_discrete_colors))
         im = ax.imshow(colors[x_slice, y_slice], interpolation='none',
                        origin='lower', extent=[y[0], y[-1], x[0], x[-1]],
-                       cmap=plt.get_cmap(cmap), clim=color_clim)
+                       cmap=plt.get_cmap(cmap), clim=color_clim,
+                       vmin=color_range[0], vmax=color_range[1])
     if vectors is not None:
         if vectors_values is not None:
             # TODO: Does "-" sign because of RA increases to the left actually?

@@ -29,6 +29,14 @@ def get_p_img_for_plot(image_data_i, image_data_p, min_abs_level):
     return image_data_p_for_plot
 
 
+def shift_img(img, core, mapsize):
+    # shift img to locate core in centre
+    x_max, y_max = np.unravel_index(core, img.shape)
+    img_ = np.roll(img, round(mapsize[0] / 2 - x_max), axis=0)
+    img__ = np.roll(img_, round(mapsize[1] / 2 - y_max), axis=1)
+    return img__
+
+
 def plot_sourse_map_w_ridge(source_name, data_folder, base_dir='./', outfile='./fig.jpg', contours_mode='P', 
                             colors_mode='n', vectors_mode='chi', fig=None, ax=None):
     i_file = '{}/{}_stack_i_true.fits'.format(data_folder, source_name)
@@ -73,29 +81,31 @@ def plot_sourse_map_w_ridge(source_name, data_folder, base_dir='./', outfile='./
     image_data_fpol = np.flip(image_data_fpol)
     image_data_chi = np.flip(image_data_chi)
     '''
-    core = np.argmax(image_data_i)
-    x_max, y_max = np.unravel_index(core, image_data_i.shape)
+    image_data = {}
+    image_data['i'] = image_data_i
+    image_data['p'] = image_data_p
+    image_data['fpol'] = image_data_fpol
+    image_data['chi'] = image_data_chi
+    image_data['std_EVPA'] = image_data_std_EVPA
 
-    # shift img to locate core in centre
-    image_data_i = np.roll(image_data_i, round(mapsize[0] / 2 - x_max), axis=0)
-    image_data_i = np.roll(image_data_i, round(mapsize[1] / 2 - y_max), axis=1)
-    image_data_p = np.roll(image_data_p, round(mapsize[0] / 2 - x_max), axis=0)
-    image_data_p = np.roll(image_data_p, round(mapsize[1] / 2 - y_max), axis=1)
-    image_data_fpol = np.roll(image_data_fpol, round(mapsize[0] / 2 - x_max), axis=0)
-    image_data_fpol = np.roll(image_data_fpol, round(mapsize[1] / 2 - y_max), axis=1)
-    image_data_chi = np.roll(image_data_chi, round(mapsize[0] / 2 - x_max), axis=0)
-    image_data_chi = np.roll(image_data_chi, round(mapsize[1] / 2 - y_max), axis=1)
+    core = np.argmax(image_data['i'])
+
+    types = ['i', 'p', 'fpol', 'chi', 'std_EVPA']
+    
+    for type_ in types:
+        if image_data[type_] is not None:
+            image_data[type_] = shift_img(image_data[type_], core, mapsize)
 
     npixels_beam = np.pi * beam[0] * beam[1] / (4 * np.log(2) * mapsize[1] ** 2)
-    std = find_image_std(image_data_i, beam_npixels=npixels_beam)
-    std_p = find_image_std(image_data_p, beam_npixels=npixels_beam)
+    std = find_image_std(image_data['i'], beam_npixels=npixels_beam)
+    std_p = find_image_std(image_data['p'], beam_npixels=npixels_beam)
     min_abs_level = 2 * std
-    blc, trc = find_bbox(image_data_i, level=20 * std, min_maxintensity_mjyperbeam=40 * std,
+    blc, trc = find_bbox(image_data['i'], level=20 * std, min_maxintensity_mjyperbeam=40 * std,
                          min_area_pix=4 * npixels_beam, delta=10)
     if blc[0] == 0: blc = (blc[0] + 1, blc[1])
     if blc[1] == 0: blc = (blc[0], blc[1] + 1)
-    if trc[0] == image_data_i.shape: trc = (trc[0] - 1, trc[1])
-    if trc[1] == image_data_i.shape: trc = (trc[0], trc[1] - 1)
+    if trc[0] == image_data['i'].shape: trc = (trc[0] - 1, trc[1])
+    if trc[1] == image_data['i'].shape: trc = (trc[0], trc[1] - 1)
     # blc = [400, 400]
     # trc = [624, 624]
 
@@ -103,7 +113,7 @@ def plot_sourse_map_w_ridge(source_name, data_folder, base_dir='./', outfile='./
     y_bound = np.abs(mapsize[1] * pix_size[1] / 57.3 / 2)
 
     # plot_ridgeline(image_data, beam, mapsize, min_abs_level, std, pix_size)
-    spl, ridge, raw_ridge = get_average_ridgeline(image_data_i, beam, mapsize, min_abs_level, std, pix_size)
+    spl, ridge, raw_ridge = get_average_ridgeline(image_data['i'], beam, mapsize, min_abs_level, std, pix_size)
     if spl is None:
         print('!!! Unable to build ridgeline !!!')
         return None
@@ -140,46 +150,46 @@ def plot_sourse_map_w_ridge(source_name, data_folder, base_dir='./', outfile='./
         # ax.scatter(ridge_y, ridge_x)
 
         if contours_mode == 'I':
-            contours = image_data_i
+            contours = image_data['i']
             P_colorscheme = False
         elif contours_mode == 'P':
-            contours = get_p_img_for_plot(image_data_i, image_data_p, min_abs_level)
+            contours = get_p_img_for_plot(image_data['i'], image_data['p'], min_abs_level)
             P_colorscheme = True
         elif contours_mode == 'fpol':
-            contours = image_data_fpol
+            contours = image_data['fpol']
             P_colorscheme = False
         else:
             contours = None
 
         if colors_mode == 'I':
-            colors = image_data_i
+            colors = image_data['i']
             plot_colorbar = True
             colorbar_label = 'Flux, mJa/beam'
-            colors_mask = [image_data_i < 20 * std]
+            colors_mask = [image_data['i'] < 20 * std]
         elif colors_mode == 'P':
-            colors = get_p_img_for_plot(image_data_i, image_data_p, min_abs_level)
+            colors = get_p_img_for_plot(image_data['i'], image_data['p'], min_abs_level)
             plot_colorbar = True
             colorbar_label = 'Polarized flux, mJa/beam'
-            colors_mask = [image_data_i < 20 * std]
+            colors_mask = [image_data['i'] < 20 * std]
         elif colors_mode == 'fpol':
-            colors = image_data_fpol
+            colors = image_data['fpol']
             plot_colorbar = True
             colorbar_label = 'Frac. pol.'
-            colors_mask = [image_data_i < 20 * std]
+            colors_mask = [image_data['i'] < 20 * std]
         elif colors_mode == 'std':
-            colors = image_data_std_EVPA
+            colors = image_data['std_EVPA']
             plot_colorbar = True
             colorbar_label = 'STD EVPA, deg'
-            colors_mask = [image_data_i < 20 * std]
+            colors_mask = [image_data['i'] < 20 * std]
         else:
             colors = None
             plot_colorbar = False
             colorbar_label = None
-            colors_mask = [image_data_i < 20 * std]
+            colors_mask = [image_data['i'] < 20 * std]
 
         if vectors_mode == 'chi':
-            vectors = image_data_chi
-            vectors_mask = [image_data_i < 20 * std]
+            vectors = image_data['chi']
+            vectors_mask = [image_data['i'] < 20 * std]
         else:
             vectors = None
             vectors_mask = None
@@ -194,7 +204,7 @@ def plot_sourse_map_w_ridge(source_name, data_folder, base_dir='./', outfile='./
               P_colorcheme=P_colorscheme)
         # plt.show()
         # fig.savefig('./fig.jpg')
-        fig.savefig(os.path.join(base_dir+'/source_graphs', outfile))
+        fig.savefig(os.path.join(base_dir+'/source_graphs', outfile), bbox_inches='tight')
 
 
 if __name__ == "__main__":

@@ -345,7 +345,7 @@ def get_average_ridgeline(image_data, beam, mapsize, min_abs_level, noise, pix_s
 
     ridgeline_polar = ridgeline_polar[:, ridgeline_polar[0].argsort()]
     # spl = get_univariate_spl(x=ridgeline_polar[0], y=ridgeline_polar[1], w=ridgeline_polar[2])
-    while ridgeline_polar[1].max() - ridgeline_polar[1].min() > np.pi/6:
+    while ridgeline_polar[1].max() - ridgeline_polar[1].min() > np.pi/4:
 
         ridgeline_polar = ridgeline_polar[:, :-1]
     spl = get_smooth_univariate_spl(x=ridgeline_polar[0], y=ridgeline_polar[1], w=ridgeline_polar[2])
